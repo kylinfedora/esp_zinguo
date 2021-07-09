@@ -29,19 +29,17 @@
 #define KEY_BLOW 7        // 吹风,Q
 #define KEY_WARM_1 8      // 取暖1,R
 
-const char HASS_DISCOVER_ZINGUO[] PROGMEM =
-    "{\"name\":\"%s_%s\","
-    "\"cmd_t\":\"%s\","
-    "\"stat_t\":\"%s\","
-    "\"pl_off\":\"OFF\","
-    "\"pl_on\":\"ON\","
-    "\"avty_t\":\"%s\","
-    "\"pl_avail\":\"online\","
-    "\"pl_not_avail\":\"offline\"}";
+#ifdef USE_EXPAND
+static const uint8_t DEBOUNCED_STATE = 0b00000001;
+static const uint8_t UNSTABLE_STATE = 0b00000010;
+static const uint8_t BUTTON_DEBOUNCE_TIME = 50; // 消抖时间
+#define BUTTON_IO 0
+#define LED_IO 3
+#endif
 
 class Zinguo : public Module
 {
-private:
+public:
     ZinguoConfigMessage config;
     //数码管0~9,Fix For New
     const unsigned char DigitNUM[10] = {0x81, 0x9F, 0xA2, 0x92, 0x9C, 0xD0, 0xC0, 0x9B, 0x80, 0x90};
@@ -101,11 +99,11 @@ private:
 
     void reportPower();
 
-public:
+//public:
     void init();
     String getModuleName() { return F("zinguo"); }
     String getModuleCNName() { return F("峥果浴霸"); }
-    String getModuleVersion() { return F("2020.02.22.1000"); }
+    String getModuleVersion() { return F("2021.01.18.2100"); }
     String getModuleAuthor() { return F("情留メ蚊子"); }
     bool moduleLed() { return false; }
 
@@ -116,12 +114,36 @@ public:
     void resetConfig();
     void saveConfig(bool isEverySecond);
 
-    void mqttCallback(String topicStr, String str);
+    void mqttCallback(char *topic, char *payload, char *cmnd);
     void mqttConnected();
     void mqttDiscovery(bool isEnable = true);
 
     void httpAdd(ESP8266WebServer *server);
     void httpHtml(ESP8266WebServer *server);
     String httpGetStatus(ESP8266WebServer *server);
+
+#ifdef USE_EXPAND
+    // 按键
+    // 等待开关再次切换的时间（以毫秒为单位）。
+    // 300对我来说效果很好，几乎没有引起注意。 如果您不想使用此功能，请设置为0。
+    uint16_t specialFunctionTimeout2 = 300;
+    unsigned long buttonTimingStart2;
+    unsigned long buttonIntervalStart2;
+    uint8_t buttonStateFlag2;
+    uint8_t switchCount2;
+    uint8_t last2;
+    void cheackButton();
+
+    // PWM
+    Ticker ledTicker;
+    uint16_t ledLevel = 0;
+    uint16_t ledLight = 1023;
+    bool ledUp = true;
+    bool canLed = true;
+    void led(bool isOn);
+    void ledPWM(bool isOn);
+    void ledTickerHandle();
+    bool checkCanLed(bool re = false);
+#endif
 };
 #endif
